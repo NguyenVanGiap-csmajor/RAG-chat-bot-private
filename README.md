@@ -1,71 +1,131 @@
-# RAG Chatbot
+# LocalMind AI — Private Knowledge RAG Chatbot
 
-A simple Retrieval-Augmented Generation (RAG) chatbot for PDF documents.
+A privacy-first **Retrieval-Augmented Generation (RAG)** chatbot designed for querying private PDF knowledge bases using local Large Language Models (LLMs).
 
-This project includes:
-- `backend/`: FastAPI API for retrieval and chat
-- `frontend/`: React + Vite web interface
-- `chatbot.py`: terminal chat client using the same RAG pipeline
-- `papers/`: PDF files used as the knowledge base
+LocalMind AI enables users to interact with their documents through natural language while ensuring that all data processing and inference remain local and secure.
 
-## How It Works
+---
 
-The app:
-- loads PDF files from `papers/`
-- splits them into chunks
-- creates embeddings with `BAAI/bge-small-zh-v1.5`
-- stores vectors in FAISS
-- retrieves relevant chunks for each question
-- asks Ollama `llama3.1:8b` to answer using only retrieved context
+## Overview
+
+LocalMind AI implements a complete end-to-end RAG pipeline combining document retrieval, semantic search, and grounded LLM responses.
+
+The system ingests PDF documents, converts them into semantic embeddings, retrieves relevant context at query time, and generates answers strictly based on retrieved knowledge.
+
+Key objectives:
+
+* Local and privacy-preserving document intelligence
+* Context-grounded LLM responses
+* Modular RAG architecture
+* Unified web and terminal interaction interfaces
+
+---
+
+## System Architecture
+
+The application follows a modular client–server design:
+
+```
+User Query
+    ↓
+Frontend (React)
+    ↓
+FastAPI Backend
+    ↓
+Document Retriever (FAISS)
+    ↓
+Context Injection
+    ↓
+Local LLM (Ollama - Llama 3.1)
+    ↓
+Grounded Response
+```
+
+Core pipeline:
+
+1. Load PDF documents from the knowledge base
+2. Split documents into semantic chunks
+3. Generate embeddings
+4. Store vectors in FAISS
+5. Retrieve top-k relevant chunks per query
+6. Generate answers using retrieved context only
+
+---
+
+## Features
+
+* Retrieval-Augmented Generation (RAG) pipeline
+* Local LLM inference via Ollama
+* Semantic search over PDF collections
+* Shared backend logic across web and CLI clients
+* Automatic backend warm-up and indexing
+* Modular architecture for easy experimentation
+
+---
 
 ## Tech Stack
 
-- Backend: FastAPI, LangChain, FAISS
-- Frontend: React, Vite, Axios
-- LLM runtime: Ollama
-- Embeddings: HuggingFace sentence-transformers
+### Backend
 
-## Requirements
+* FastAPI
+* LangChain
+* FAISS vector database
+* HuggingFace embeddings
 
-Install these first:
-- Python 3.10+
-- Node.js 18+
-- Ollama
+### Frontend
 
-Pull the Ollama model:
+* React
+* Vite
+* Axios
+
+### AI Components
+
+* LLM Runtime: Ollama
+* Model: `llama3.1:8b`
+* Embeddings: `BAAI/bge-small-zh-v1.5`
+
+---
+
+## Project Structure
+
+```
+RAG_Chatbot/
+│
+├── backend/
+│   ├── main.py          # FastAPI application
+│   ├── rag.py           # RAG pipeline implementation
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.js
+│
+├── papers/              # Knowledge base (PDF documents)
+├── chatbot.py           # Terminal chat client
+├── README.md
+└── .gitignore
+```
+
+---
+
+## Setup
+
+### Prerequisites
+
+* Python 3.10+
+* Node.js 18+
+* Ollama
+
+Install the LLM model:
 
 ```powershell
 ollama pull llama3.1:8b
 ```
 
-If Ollama is running on a different host or port, set these environment variables before starting the backend:
+---
 
-```powershell
-$env:OLLAMA_BASE_URL="http://127.0.0.1:11434"
-$env:OLLAMA_MODEL="llama3.1:8b"
-```
-
-## Project Structure
-
-```text
-RAG_Chatbot/
-|-- backend/
-|   |-- main.py
-|   |-- rag.py
-|   `-- requirements.txt
-|-- frontend/
-|   |-- src/
-|   |-- package.json
-|   `-- vite.config.js
-|-- papers/
-|-- chatbot.py
-|-- README.md
-`-- .gitignore
-```
-
-## Run Locally
-
-### 1. Install backend dependencies
+### Backend Environment
 
 ```powershell
 python -m venv .venv
@@ -73,7 +133,11 @@ python -m venv .venv
 pip install -r backend\requirements.txt
 ```
 
-### 2. Start the frontend and backend together
+---
+
+### Run Development Environment
+
+Start both backend and frontend:
 
 ```powershell
 cd frontend
@@ -81,48 +145,78 @@ npm install
 npm run dev
 ```
 
-This dev command now:
-- starts the FastAPI backend at `http://127.0.0.1:8000`
-- starts the Vite frontend at `http://127.0.0.1:5173`
-- warms up the backend by loading PDFs, chunking documents, creating embeddings, and warming the Ollama model
-- unlocks the chat UI only after the backend is ready
+Services:
 
-If you prefer running the backend by itself:
+* Backend API → http://127.0.0.1:8000
+* Frontend UI → http://127.0.0.1:5173
 
-```powershell
-uvicorn backend.main:app --reload
+The backend automatically initializes the RAG pipeline, indexes documents, and prepares the model before enabling chat interaction.
+
+---
+
+### API Endpoints
+
+**Health Check**
+
+```
+GET /health
 ```
 
-Available endpoints:
-- `GET /health`
-- `POST /chat`
+**Chat Endpoint**
 
-Example request body:
+```
+POST /chat
+```
+
+Example request:
 
 ```json
 {
-  "question": "What are the key challenges discussed in the papers?"
+  "question": "What are the key environmental challenges discussed in the papers?"
 }
 ```
 
-If you want to change the backend URL, create `frontend/.env`:
+---
 
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
-### 3. Optional: run the terminal chatbot
+### Terminal Chat Client (Optional)
 
 ```powershell
 python chatbot.py
 ```
 
-Type `exit` or `quit` to stop.
+---
 
-## Notes
+## Knowledge Base
 
-- Put your PDF files inside `papers/` before asking questions.
-- The first run can be slower because the app needs to load documents and build the in-memory vector store.
-- If you see `WinError 10061`, the backend could not connect to Ollama. Start the Ollama desktop app or run `ollama serve`, then verify the model is installed with `ollama pull llama3.1:8b`.
-- If the backend fails with NumPy-related issues, recreate the virtual environment and reinstall dependencies from [backend/requirements.txt](backend/requirements.txt).
-- The web app and terminal chatbot both use the same logic defined in [backend/rag.py](backend/rag.py).
+Place PDF documents inside:
+
+```
+papers/
+```
+
+Documents are automatically indexed during system initialization.
+
+---
+
+## Design Principles
+
+* **Grounded Generation** — responses rely only on retrieved context
+* **Local-First AI** — no external API dependency
+* **Modular Components** — easy replacement of models or vector stores
+* **Reproducible Pipeline** — shared logic across interfaces
+
+---
+
+## Future Improvements
+
+* Hybrid retrieval (BM25 + embeddings)
+* Metadata-aware retrieval
+* Streaming responses
+* Multi-document citation support
+* Evaluation pipeline for RAG quality
+
+---
+
+## License
+
+For research and educational purposes.

@@ -1,0 +1,12 @@
+numpy<2
+fastapi
+uvicorn
+langchain-community
+langchain-core
+langchain-text-splitters
+langchain-ollama
+faiss-cpu
+sentence-transformers
+unstructured[pdf]
+unstructured-inference
+pypdf

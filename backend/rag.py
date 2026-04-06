@@ -52,82 +52,24 @@ for logger_name in ("sentence_transformers", "transformers", "huggingface_hub", 
     logging.getLogger(logger_name).setLevel(logging.ERROR)
 
 MARKDOWN_SEPARATORS = [
-
-    # =====================================================
-    # LEVEL 1 — STRONG STRUCTURAL BREAKS (Paper hierarchy)
-    # =====================================================
-
-    # Markdown / converted headings
-    "\n# ",
-    "\n## ",
-    "\n### ",
-    "\n#### ",
-
-    # ALL-CAPS headings (ABSTRACT, INTRODUCTION, etc.)
-    "\n[A-Z][A-Z ]{3,}\n",
-
-    # Numbered main sections
-    "\n\\d+\\.\\s+[A-Z]",
-    "\n\\d+\\s+[A-Z]",
-
-    # Roman numeral sections
-    "\n[I|V|X]+\\.\\s+[A-Z]",
-
-    # =====================================================
-    # LEVEL 2 — SUBSECTIONS (very common in journals)
-    # =====================================================
-
-    # 1.1 / 2.3 / 3.2.1 patterns
-    "\n\\d+\\.\\d+\\.?\\s+",
-    "\n\\d+\\.\\d+\\.\\d+\\s+",
-
-    # Letter subsections (A., B., C.)
-    "\n[A-Z]\\.\\s+",
-
-    # Bullet scientific lists
-    "\n- ",
-    "\n• ",
-    "\n* ",
-
-    # =====================================================
-    # TABLE STRUCTURE SPLITS (important for your papers)
-    # =====================================================
-
-    # Markdown tables
-    "\n|",
-    "|\n",
-
-    # Table captions
-    "\nTable ",
-    "\nTABLE ",
-    "\nFig.",
-    "\nFigure ",
-
-    # Column-heavy PDF conversions
-    "\n\t",
-    "  ",
-
-    # =====================================================
-    # PARAGRAPH STRUCTURE
-    # =====================================================
-
-    # Strong paragraph breaks
-    "\n\n\n",
-    "\n\n",
-
-    # Line breaks (PDF converted text)
-    "\n",
-
-    # =====================================================
-    # SENTENCE-LEVEL FALLBACK
-    # =====================================================
-
-    ". ",
-    "? ",
-    "! ",
-
-    # Absolute fallback
-    " "
+    # Regex separators tuned for the three environmental-pollution PDFs:
+    # - clean numbered sections in the ChatGPT paper
+    # - single-line headings with repeated spaces in the Gemini paper
+    # - ALL-CAPS journal headings in the original paper
+    r"\n(?=#{1,6}\s)",
+    r"\n(?=[A-Z][A-Z][A-Z \-:&()]{3,}\n)",
+    r"\n(?=(?:Abstract|Keywords|Introduction|Methodology|Methods?|Materials(?: and Methods?)?|Results(?: and Discussion)?|Discussion|Conclusion|References)\b)",
+    r"\n(?=\d+(?:\.\d+)?\.\s{1,}(?:Abstract|Keywords|Introduction|Methodology|Methods?|Current Dimensions of Pollution|Results(?: and Discussion)?|Discussion|Proposed Solutions(?: and Strategic Framework)?|Conclusion|References(?:\s*\(Simplified\))?)\b)",
+    r"\n(?=\d+\.\d+(?:\.\d+)?\.\s{1,}[A-Z][A-Za-z\"()/-]*(?:\s{1,}(?:[A-Z][A-Za-z\"()/-]*|of|and|the|to|in|for|on|with|&)){0,12}(?:\s{2,}|\n))",
+    r"\n(?=(?:Table|TABLE|Figure|FIGURE|Fig\.)\s*\d*)",
+    r"\n(?=Strategy\s+Level\s+Action\s+Items\s+Expected\s+Impact\b)",
+    "\n(?=[\\-*\\u2022\\u25A0\\u25CF\\x7f])",
+    r"\n{3,}",
+    r"\n{2,}",
+    r"\n",
+    r"(?<=[.?!:;])\s+",
+    r" {2,}",
+    r" ",
 ]
 
 PROMPT_TEMPLATE = ChatPromptTemplate.from_template(
@@ -146,6 +88,7 @@ PROMPT_TEMPLATE = ChatPromptTemplate.from_template(
         "QUESTION:\n{question}\n"
     )
 )
+
 
 @contextmanager
 def _quiet_console():
@@ -172,6 +115,7 @@ def _create_text_splitter() -> RecursiveCharacterTextSplitter:
         chunk_overlap=200,
         add_start_index=True,
         strip_whitespace=True,
+        is_separator_regex=True,
         separators=MARKDOWN_SEPARATORS,
     )
 

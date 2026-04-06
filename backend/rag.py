@@ -1,3 +1,8 @@
+import io
+import logging
+import os
+import warnings
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from functools import lru_cache
 from pathlib import Path
 
@@ -11,6 +16,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PAPERS_DIR = BASE_DIR / "papers"
+
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+for logger_name in ("sentence_transformers", "transformers", "huggingface_hub", "unstructured"):
+    logging.getLogger(logger_name).setLevel(logging.ERROR)
 
 MARKDOWN_SEPARATORS = [
     "\nAbstract\n",
@@ -48,12 +59,21 @@ PROMPT_TEMPLATE = ChatPromptTemplate.from_template(
 )
 
 
+@contextmanager
+def _quiet_console():
+    """Silence noisy third-party stdout/stderr and non-critical warnings."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore")
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            yield
+
+
 def _create_loader() -> DirectoryLoader:
     return DirectoryLoader(
         path=str(PAPERS_DIR),
         glob="**/*.pdf",
         loader_cls=UnstructuredFileLoader,
-        show_progress=True,
+        show_progress=False,
         use_multithreading=True,
     )
 
@@ -106,24 +126,23 @@ def _extract_sources(docs: list) -> list[str]:
 
 
 @lru_cache(maxsize=1)
-def get_retriever():
+def get_vectorstore():
     if not PAPERS_DIR.exists():
         raise FileNotFoundError(f"Missing papers directory: {PAPERS_DIR}")
 
-    docs = _create_loader().load()
+    with _quiet_console():
+        docs = _create_loader().load()
     if not docs:
         raise ValueError(f"No PDF files found in {PAPERS_DIR}")
 
     splits = _create_text_splitter().split_documents(docs)
-    vectorstore = FAISS.from_documents(
-        documents=splits,
-        embedding=_create_embeddings(),
-        distance_strategy=DistanceStrategy.COSINE,
-    )
-    return vectorstore.as_retriever(
-        search_type="similarity_score_threshold",
-        search_kwargs={"k": 5, "score_threshold": 0.2},
-    )
+    with _quiet_console():
+        vectorstore = FAISS.from_documents(
+            documents=splits,
+            embedding=_create_embeddings(),
+            distance_strategy=DistanceStrategy.COSINE,
+        )
+    return vectorstore
 
 
 def ask_rag(question: str) -> dict:
@@ -131,8 +150,8 @@ def ask_rag(question: str) -> dict:
     if not cleaned_question:
         return {"answer": "Please enter a question.", "sources": []}
 
-    retriever = get_retriever()
-    docs = retriever.invoke(cleaned_question)
+    vectorstore = get_vectorstore()
+    docs = vectorstore.similarity_search(cleaned_question, k=5)
     sources = _extract_sources(docs)
 
     if not docs:

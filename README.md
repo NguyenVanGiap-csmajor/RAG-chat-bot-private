@@ -82,7 +82,7 @@ Core pipeline:
 
 * LLM Runtime: Ollama
 * Model: `llama3.1:8b`
-* Embeddings: `BAAI/bge-small-zh-v1.5`
+* Embeddings: `BAAI/bge-base-en-v1.5`
 
 ---
 
